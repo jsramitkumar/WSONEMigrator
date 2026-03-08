@@ -458,7 +458,7 @@ Every commit to `main` that changes `server/**` triggers a GitHub Actions workfl
 4. Builds the image from `server/Dockerfile`
 5. Pushes two tags:
    - `jsrankit/wsonemigratorsrv:latest`
-   - `jsrankit/wsonemigratorsrv:sha-<short-commit>`
+   - `jsrankit/wsonemigratorsrv:DDMMYYYY.HHMMSS` *(e.g. `08032026.143022`)*
 
 **Required GitHub repository secrets:**
 
