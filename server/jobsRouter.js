@@ -202,10 +202,17 @@ router.post('/:id/migrate', async (req, res) => {
 
 // ── GET /jobs/:id/audit ───────────────────────────────────────────────────
 router.get('/:id/audit', async (req, res) => {
+  const { entity_type } = req.query;
   try {
+    const conditions = ['job_id = $1'];
+    const params = [req.params.id];
+    if (entity_type) {
+      conditions.push(`entity_type = $2`);
+      params.push(entity_type);
+    }
     const { rows } = await query(
-      `SELECT * FROM migration_audit_log WHERE job_id = $1 ORDER BY created_at DESC LIMIT 500`,
-      [req.params.id]
+      `SELECT * FROM migration_audit_log WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 500`,
+      params
     );
     res.json({ logs: rows });
   } catch (err) {

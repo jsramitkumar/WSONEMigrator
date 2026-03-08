@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('./config/database');
-const { getClientForEnv } = require('./uemClient');
+const { UEMClient, getClientForEnv } = require('./uemClient');
 
 const router = express.Router();
 
@@ -32,6 +32,21 @@ router.get('/:id', async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /environments/test-connection - Test credentials before saving (must be before /:id routes)
+router.post('/test-connection', async (req, res) => {
+  try {
+    const client = new UEMClient(req.body);
+    const root = await client.getRootOrgGroup();
+    res.json({
+      success: true,
+      message: 'Connection successful',
+      root_og: root?.Name || root?.GroupName,
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
   }
 });
 
@@ -103,7 +118,7 @@ router.post('/:id/test', async (req, res) => {
       root_og: root?.Name || root?.GroupName,
     });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.json({ success: false, error: err.message });
   }
 });
 
