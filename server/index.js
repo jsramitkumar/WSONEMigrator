@@ -15,10 +15,18 @@ const app = express();
 
 // Trust proxy – required when running behind a reverse-proxy / in Docker
 // so that express-rate-limit can correctly identify client IPs from X-Forwarded-For.
-// Override via TRUST_PROXY env var: 'false' to disable, a number for explicit hop count.
-const trustProxy = process.env.TRUST_PROXY !== undefined
-  ? (process.env.TRUST_PROXY === 'false' ? false : (Number.isFinite(Number(process.env.TRUST_PROXY)) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY))
-  : true;
+// Defaults to 1 (trust one upstream hop). Override via TRUST_PROXY env var:
+//   'false' to disable, or a number for an explicit hop count.
+// NOTE: Do NOT set to `true` – express-rate-limit rejects it because it allows
+//       clients to trivially spoof their IP via X-Forwarded-For.
+const _rawProxy = process.env.TRUST_PROXY;
+const trustProxy = _rawProxy === undefined
+  ? 1
+  : _rawProxy === 'false'
+    ? false
+    : Number.isFinite(Number(_rawProxy))
+      ? Number(_rawProxy)
+      : _rawProxy;
 app.set('trust proxy', trustProxy);
 
 // ── Security & middleware ─────────────────────────────────────────────────
