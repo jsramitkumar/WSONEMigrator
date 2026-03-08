@@ -32,43 +32,42 @@ jobs:
           echo "| Timestamp | \`${TAG}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Rolling   | \`latest\` |" >> "$GITHUB_STEP_SUMMARY"
 
-      # ── 3. Docker setup ──────────────────────────────────────────────────
+      # ── 3. QEMU – enables ARM64 emulation on the amd64 runner ────────────
+      - name: "⚙️  Set up QEMU"
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      # ── 4. Docker setup ──────────────────────────────────────────────────
       - name: "🔧 Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
 
-      # ── 4. Registry auth ─────────────────────────────────────────────────
+      # ── 5. Registry auth ─────────────────────────────────────────────────
       - name: "🔐 Log in to Docker Hub"
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ── 5. Build (no push) ───────────────────────────────────────────────
-      - name: "🏗️  Build Docker image"
+      # ── 6. Build & push multi-platform image ─────────────────────────────
+      # load: true is incompatible with multi-platform builds; push directly.
+      - name: "🏗️  Build and push Docker image (amd64 + arm64)"
         uses: docker/build-push-action@v5
         with:
           context: ./server
           file: ./server/Dockerfile
-          push: false
-          load: true
+          platforms: linux/amd64,linux/arm64
+          push: true
           tags: |
             jsrankit/wsonemigratorsrv:latest
             jsrankit/wsonemigratorsrv:${{ steps.ts.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ── 6. Smoke test ────────────────────────────────────────────────────
-      - name: "🔍 Verify image was built"
+      # ── 7. Smoke test – verify manifest contains both platforms ───────────
+      - name: "🔍 Verify multi-platform manifest"
         run: |
-          docker image inspect jsrankit/wsonemigratorsrv:latest \
-            --format '✅ Image size: {{.Size}} bytes — Created: {{.Created}}'
-
-      # ── 7. Push both tags ────────────────────────────────────────────────
-      - name: "🚀 Push :latest to Docker Hub"
-        run: docker push jsrankit/wsonemigratorsrv:latest
-
-      - name: "🚀 Push :${{ steps.ts.outputs.tag }} to Docker Hub"
-        run: docker push jsrankit/wsonemigratorsrv:${{ steps.ts.outputs.tag }}
+          docker buildx imagetools inspect jsrankit/wsonemigratorsrv:latest
 
       # ── 8. Job summary ───────────────────────────────────────────────────
       - name: "📋 Write job summary"
