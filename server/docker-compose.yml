@@ -1,0 +1,63 @@
+services:
+  # ── Application ────────────────────────────────────────────────────────
+  api:
+    image: jsrankit/wsonemigratorsrv:latest
+    container_name: WSONE-Migrator-API
+    restart: unless-stopped
+    ports:
+      - "5271:5271"
+    environment:
+      NODE_ENV: production
+      PORT: 5271
+      LOG_LEVEL: info
+      # Database — resolved to the service name below
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-uem_migration}
+      DB_USER: ${DB_USER:-migrator}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_POOL_MAX: 20
+      # UEM API
+      UEM_API_TIMEOUT: 30000
+      UEM_API_MAX_RETRIES: 3
+      UEM_API_RATE_LIMIT_DELAY: 200
+      # Migration tuning
+      MIGRATION_BATCH_SIZE: 50
+      MIGRATION_MAX_CONCURRENT: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:5271/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: WSONE-Migrator-DB
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-uem_migration}
+      POSTGRES_USER: ${DB_USER:-migrator}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-migrator} -d ${DB_NAME:-uem_migration}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+    driver: bridge

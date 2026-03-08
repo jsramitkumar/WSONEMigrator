@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+README.md
+UEM_Migration_API_Reference_v2.docx
