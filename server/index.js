@@ -13,6 +13,14 @@ const jobsRouter = require('./jobsRouter');
 
 const app = express();
 
+// Trust proxy – required when running behind a reverse-proxy / in Docker
+// so that express-rate-limit can correctly identify client IPs from X-Forwarded-For.
+// Override via TRUST_PROXY env var: 'false' to disable, a number for explicit hop count.
+const trustProxy = process.env.TRUST_PROXY !== undefined
+  ? (process.env.TRUST_PROXY === 'false' ? false : (Number.isFinite(Number(process.env.TRUST_PROXY)) ? Number(process.env.TRUST_PROXY) : process.env.TRUST_PROXY))
+  : true;
+app.set('trust proxy', trustProxy);
+
 // ── Security & middleware ─────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors());
