@@ -29,17 +29,35 @@ const trustProxy = _rawProxy === undefined
       : _rawProxy;
 app.set('trust proxy', trustProxy);
 
+// ── CORS ─────────────────────────────────────────────────────────────────
+// Must be configured before helmet and the rate limiter so that OPTIONS
+// preflight requests are answered immediately with the correct headers.
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+};
+
+// Respond to all OPTIONS preflight requests before any other middleware.
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
+
 // ── Security & middleware ─────────────────────────────────────────────────
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  // helmet's crossOriginResourcePolicy blocks cross-origin fetches by default;
+  // disable it so the CORS headers we set above take effect.
+  crossOriginResourcePolicy: false,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
+// Rate limiting (skip OPTIONS so preflight is never rate-limited)
 app.use('/api', rateLimit({
   windowMs: 60 * 1000,
   max: 200,
   message: { error: 'Too many requests, please slow down.' },
+  skip: (req) => req.method === 'OPTIONS',
 }));
 
 // Request logger
